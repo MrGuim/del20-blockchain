@@ -32,13 +32,13 @@ export const getEvent: RequestHandler = catchError(async (req: any, res) => {
         throw new ApiError(404, 'event not found');
     }
 
-    if (event.currentPeople == event.maxPeople || !event.isCreated || event.imageUrl === undefined) {
+    const currentPeople = event.publicKeys.length + 1;
+
+    if (currentPeople == event.maxPeople + 1 || event.imageUrl === undefined) {
         return res.status(httpStatus.GONE).send({
             isActive: false
         });
     }
-
-    event.currentPeople++;
 
     const arweave = Arweave.init({
         host: '127.0.0.1',
@@ -51,15 +51,15 @@ export const getEvent: RequestHandler = catchError(async (req: any, res) => {
     const keypair: Keypair = Keypair.fromSecretKey(new Uint8Array(secretKey));
 
     const metadata = {
-        name: 'Event test #' + event.currentPeople,
+        name: 'Event test #' + currentPeople,
         symbol: 'DNFT',
-        description: 'The ' + event.currentPeople + ' arrived at the event test',
+        description: 'The ' + currentPeople + ' arrived at the event test',
         seller_fee_basis_points: 500,
         external_url: 'https://www.delaware.pro',
         attributes: [
             {
                 trait_type: 'Emit number',
-                value: event.currentPeople
+                value: currentPeople
             }
         ],
         collection: {

@@ -49,9 +49,9 @@
   },
   "scripts": {
     "dev": "NODE_ENV=development ts-node-dev --respawn --transpile-only ./src/index.ts",
-    "start": "npm run build && npm run prod",
+    "start": "npm run prod",
     "prod": "NODE_ENV=production node ./build/index.js",
-    "build": "NODE_ENV=production tsc -p . && cp -R src/templates build/templates",
+    "build": "NODE_ENV=production tsc -p .",
     "format": "prettier --write src/**/*.ts",
     "lint": "tsc --noEmit && eslint src/**/*.ts"
   }
