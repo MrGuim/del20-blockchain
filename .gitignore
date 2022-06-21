@@ -1,0 +1,7 @@
+/build/
+yarn-error.log
+yarn.lock
+.idea
+/node_modules/
+.env
+/wallets/
