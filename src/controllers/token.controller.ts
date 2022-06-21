@@ -2,6 +2,8 @@ import fs from 'fs';
 
 import { PassThrough } from 'stream';
 
+import { extname } from 'path';
+
 import { RequestHandler } from 'express';
 import httpStatus from 'http-status';
 
@@ -10,7 +12,7 @@ import Arweave from 'arweave';
 
 import { JWKInterface } from 'arweave/node/lib/wallet';
 
-import { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
+import { clusterApiUrl, Connection, Keypair, PublicKey } from '@solana/web3.js';
 
 import { keypairIdentity, Metaplex } from '@metaplex-foundation/js';
 
@@ -35,9 +37,11 @@ export const getEvent: RequestHandler = catchError(async (req: any, res) => {
     const currentPeople = event.publicKeys.length + 1;
 
     if (currentPeople == event.maxPeople + 1 || event.imageUrl === undefined) {
-        return res.status(httpStatus.GONE).send({
-            isActive: false
-        });
+        throw new ApiError(400, 'finished');
+    }
+
+    if (event.publicKeys.includes(publicKey.toString())) {
+        throw new ApiError(400, 'already participated');
     }
 
     const arweave = Arweave.init({
@@ -131,38 +135,14 @@ export const getEvent: RequestHandler = catchError(async (req: any, res) => {
         []
     );
 
-    console.log(signature);
+    event.publicKeys.push(publicKey.toString());
+    fs.writeFileSync(path, JSON.stringify(event));
 
     res.status(httpStatus.OK).send({ ok: 'ok' });
 });
 
-export const createWallet: RequestHandler = catchError(async (req: any, res) => {
-    const arweave = Arweave.init({
-        host: '127.0.0.1',
-        port: 1984,
-        protocol: 'http'
-    });
-
-    const wallet = await arweave.wallets.generate();
-    const address = await arweave.wallets.jwkToAddress(wallet);
-
-    fs.writeFileSync('./wallets/wallet-arweave.json', JSON.stringify(wallet));
-
-    await fetch('http://127.0.0.1:1984/mint/' + address + '/' + Math.pow(10, 100));
-
-    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
-    const keypair = Keypair.generate();
-    const feePayerAirdropSignature = await connection.requestAirdrop(keypair.publicKey, LAMPORTS_PER_SOL * 2);
-    await connection.confirmTransaction(feePayerAirdropSignature);
-
-    fs.writeFileSync('./wallets/wallet-solana.json', JSON.stringify(Array.from(keypair.secretKey)));
-
-    res.sendStatus(httpStatus.OK);
-});
-
 export const createEvent: RequestHandler = catchError(async (req: any, res) => {
-    const eventId = fs.readdirSync('./events').length / 2 + 1;
-    console.log(eventId);
+    const eventId = fs.readdirSync('./events').filter((e) => extname(e) === '.json').length + 1;
 
     const path: string = './events/' + eventId + '.json';
 
@@ -190,15 +170,17 @@ export const createEvent: RequestHandler = catchError(async (req: any, res) => {
     }
 
     const event: Event = {
-        eventName: req.params.name,
-        maxPeople: req.params.maxAttendees,
+        eventName: req.body.name,
+        maxPeople: req.body.maxAttendees,
         publicKeys: [],
         imageUrl: `http://127.0.0.1:1984/${transaction.id}`
     };
 
     fs.writeFileSync(path, JSON.stringify(event));
 
-    const content = 'http://127.0.0.1:3000/event/' + eventId;
+    const content = process.env.WEBSITE_SITE_NAME
+        ? 'https://' + process.env.WEBSITE_SITE_NAME + '.azurewebsites.net/event/' + eventId
+        : 'http://127.0.0.1:3000/event/' + eventId;
 
     const qrStream = new PassThrough();
 

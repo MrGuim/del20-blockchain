@@ -10,8 +10,6 @@ const upload = multer({ dest: './events/img' });
 const routes = Router();
 
 routes.get('/event/:eventId', validate(validations.getEvent), tokenController.getEvent);
-routes.post('/event', upload.single('image'), validate(validations.empty), tokenController.createEvent);
-
-routes.post('/wallet', validate(validations.empty), tokenController.createWallet);
+routes.post('/event', upload.single('image'), validate(validations.createEvent), tokenController.createEvent);
 
 export default routes;

@@ -3,6 +3,7 @@
 require('dotenv').config();
 
 import http from 'http';
+import fs from 'fs';
 
 import express from 'express';
 import helmet from 'helmet';
@@ -13,6 +14,7 @@ import httpStatus from 'http-status';
 
 import { ApiError, errorConverter, errorHandler } from './middlewares/error';
 import morgan from './middlewares/morgan';
+import { createWallet } from './utils';
 
 import routes from './routes';
 
@@ -57,12 +59,23 @@ import routes from './routes';
     // handle error
     app.use(errorHandler);
 
-    // set event as static files
+    // set event as static files and create it
+    if (!fs.existsSync('./events/img')) {
+        fs.mkdirSync('./events/img', { recursive: true });
+    }
+
+    if (!fs.existsSync('./wallets')) {
+        fs.mkdirSync('./wallets');
+    }
+
     app.use(express.static('events'));
     app.use(express.static('wallets'));
 
     // Listen http port
     const httpServer = http.createServer(app);
+
+    // generate wallet account for DEV
+    await createWallet();
 
     httpServer.listen(process.env.PORT, () => {
         console.log(`Server started on port ${process.env.PORT}`);
